@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ezequiel (EZE)</title>
+<meta name="description" content="Agrega el token Ezequiel (EZE) a tu MetaMask en un clic. Red Base.">
+<meta property="og:title" content="Ezequiel (EZE)">
+<meta property="og:description" content="Agrega EZE a tu MetaMask en un clic.">
+<meta property="og:image" content="/logo.png">
+<link rel="icon" href="/logo.png">
+<style>
+  :root{--bg:#fff8f2;--card:#ffffff;--text:#1d1a17;--muted:#6b625a;--line:#f0e2d5;--accent:#ff6a3d;--accent2:#ffb547;--ok:#1a8f4c}
+  @media (prefers-color-scheme:dark){:root{--bg:#141110;--card:#1f1a17;--text:#f6eee8;--muted:#b3a79d;--line:#332a24;--ok:#4cd187}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;justify-content:center;padding:32px 16px}
+  main{width:100%;max-width:440px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:28px 22px;text-align:center;box-shadow:0 10px 30px rgba(255,106,61,.08)}
+  img.logo{width:96px;height:96px}
+  h1{margin:12px 0 2px;font-size:28px}
+  .sub{color:var(--muted);margin:0 0 22px}
+  button,.btn{display:block;width:100%;border:0;border-radius:14px;padding:16px;font-size:17px;font-weight:700;cursor:pointer;text-decoration:none}
+  .primary{background:linear-gradient(135deg,var(--accent2),var(--accent));color:#fff}
+  .primary:disabled{opacity:.6;cursor:wait}
+  .ghost{background:transparent;color:var(--text);border:1px solid var(--line);margin-top:10px;font-weight:600;font-size:15px}
+  #msg{min-height:24px;margin:14px 0 0;font-size:15px}
+  #msg.ok{color:var(--ok)} #msg.err{color:#e0482b}
+  .info{margin-top:22px;text-align:left;border-top:1px solid var(--line);padding-top:18px;font-size:14px}
+  .row{display:flex;justify-content:space-between;gap:10px;padding:5px 0}
+  .row span:first-child{color:var(--muted)}
+  code{font-size:12px;word-break:break-all}
+  .steps{color:var(--muted);font-size:14px;text-align:left;margin:18px 0 0;padding-left:20px}
+  footer{color:var(--muted);font-size:12px;text-align:center;margin-top:18px}
+  a{color:var(--accent)}
+</style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <img class="logo" src="/logo.png" alt="Logo EZE">
+    <h1>Ezequiel</h1>
+    <p class="sub">EZE · Red Base</p>
+
+    <button id="add" class="primary">🦊 Agregar EZE a mi MetaMask</button>
+    <a id="open" class="btn primary" style="display:none">🦊 Abrir en MetaMask</a>
+    <button id="copy" class="ghost">Copiar dirección del token</button>
+    <p id="msg" role="status"></p>
+
+    <ol class="steps" id="steps">
+      <li>Toca el botón naranja.</li>
+      <li>MetaMask te pedirá cambiar a la red <b>Base</b>: acepta.</li>
+      <li>Luego te preguntará si quieres agregar <b>EZE</b>: toca <b>Agregar</b>.</li>
+    </ol>
+
+    <div class="info">
+      <div class="row"><span>Nombre</span><b>Ezequiel</b></div>
+      <div class="row"><span>Símbolo</span><b>EZE</b></div>
+      <div class="row"><span>Red</span><b>Base</b></div>
+      <div class="row"><span>Decimales</span><b>18</b></div>
+      <div class="row" style="display:block"><span>Contrato</span><br><code id="addr"></code></div>
+      <div class="row"><span>Código verificado</span><a id="explorer" target="_blank" rel="noopener">Ver en Blockscout ↗</a></div>
+    </div>
+  </div>
+  <footer>Nunca compartas tus 12 palabras secretas con nadie. Esta página nunca te las pedirá.</footer>
+</main>
+<script>
+const TOKEN = "0xb09B8Ea5fcF1276f5bF43244d47b8EBbbac45990";
+const BASE = { chainId: "0x2105", chainName: "Base", nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+  rpcUrls: ["https://mainnet.base.org"], blockExplorerUrls: ["https://basescan.org"] };
+const $ = (id) => document.getElementById(id);
+$("addr").textContent = TOKEN;
+$("explorer").href = "https://base.blockscout.com/token/" + TOKEN;
+
+function say(t, cls) { const m = $("msg"); m.textContent = t; m.className = cls || ""; }
+
+const eth = window.ethereum;
+if (!eth) {
+  // Navegador normal (sin MetaMask): abrir esta página dentro de la app MetaMask
+  $("add").style.display = "none";
+  const o = $("open");
+  o.style.display = "block";
+  o.href = "https://metamask.app.link/dapp/" + location.host + location.pathname;
+  $("steps").innerHTML = "<li>Toca <b>Abrir en MetaMask</b> (necesitas la app instalada).</li><li>Dentro de MetaMask se abrirá esta página: toca <b>Agregar EZE</b>.</li><li>Acepta la red Base y luego <b>Agregar</b>.</li>";
+}
+
+$("add").onclick = async () => {
+  const b = $("add"); b.disabled = true; say("Revisa MetaMask…");
+  try {
+    await eth.request({ method: "eth_requestAccounts" });
+    try {
+      await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: BASE.chainId }] });
+    } catch (e) {
+      if (e.code === 4902 || (e.data && e.data.originalError && e.data.originalError.code === 4902)) {
+        await eth.request({ method: "wallet_addEthereumChain", params: [BASE] });
+      } else throw e;
+    }
+    const ok = await eth.request({ method: "wallet_watchAsset", params: { type: "ERC20",
+      options: { address: TOKEN, symbol: "EZE", decimals: 18, image: location.origin + "/logo.png" } } });
+    say(ok === false ? "No se agregó. Puedes intentarlo de nuevo." : "✅ ¡Listo! EZE ya aparece en tu MetaMask (red Base).", ok === false ? "err" : "ok");
+  } catch (e) {
+    say(e.code === 4001 ? "Cancelaste en MetaMask. Puedes intentarlo de nuevo." : "Error: " + (e.message || e), "err");
+  } finally { b.disabled = false; }
+};
+
+$("copy").onclick = async () => {
+  try { await navigator.clipboard.writeText(TOKEN); say("Dirección copiada ✅", "ok"); }
+  catch { say(TOKEN); }
+};
+</script>
+</body>
+</html>
