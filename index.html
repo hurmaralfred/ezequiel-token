@@ -52,6 +52,17 @@
       <li>Luego te preguntará si quieres agregar <b>EZE</b>: toca <b>Agregar</b>.</li>
     </ol>
 
+    <details id="manual" style="text-align:left;margin-top:16px;font-size:14px">
+      <summary style="cursor:pointer;font-weight:600">¿No funciona el botón? Agrégalo a mano (1 minuto)</summary>
+      <ol style="color:var(--muted);padding-left:20px">
+        <li>Toca <b>Copiar dirección del token</b> (arriba).</li>
+        <li>En MetaMask, en la lista de <b>Tokens</b>, baja y toca <b>Importar tokens</b>.</li>
+        <li>Elige la pestaña <b>Token personalizado</b> y la red <b>Base</b>.</li>
+        <li>Pega la dirección. Se completa solo: <b>EZE</b>, 18 decimales.</li>
+        <li>Toca <b>Siguiente</b> → <b>Importar</b>.</li>
+      </ol>
+    </details>
+
     <div class="info">
       <div class="row"><span>Nombre</span><b>Ezequiel</b></div>
       <div class="row"><span>Símbolo</span><b>EZE</b></div>
@@ -83,22 +94,51 @@ if (!eth) {
   $("steps").innerHTML = "<li>Toca <b>Abrir en MetaMask</b> (necesitas la app instalada).</li><li>Dentro de MetaMask se abrirá esta página: toca <b>Agregar EZE</b>.</li><li>Acepta la red Base y luego <b>Agregar</b>.</li>";
 }
 
+// Si MetaMask no responde, no dejamos la página "pensando" para siempre.
+function withTimeout(promise, ms, step) {
+  return Promise.race([promise, new Promise((_, rej) => setTimeout(() => rej({ timeout: true, step }), ms))]);
+}
+const req = (method, params) => eth.request(params === undefined ? { method } : { method, params });
+
 $("add").onclick = async () => {
-  const b = $("add"); b.disabled = true; say("Revisa MetaMask…");
+  const b = $("add"); b.disabled = true;
   try {
-    await eth.request({ method: "eth_requestAccounts" });
-    try {
-      await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: BASE.chainId }] });
-    } catch (e) {
-      if (e.code === 4902 || (e.data && e.data.originalError && e.data.originalError.code === 4902)) {
-        await eth.request({ method: "wallet_addEthereumChain", params: [BASE] });
-      } else throw e;
+    say("Paso 1 de 3: conectando con MetaMask… (si aparece una ventana, toca Conectar)");
+    let accts = await withTimeout(req("eth_accounts"), 10000, 1).catch(() => []);
+    if (!accts || !accts.length) await withTimeout(req("eth_requestAccounts"), 60000, 1);
+
+    say("Paso 2 de 3: cambiando a la red Base… (toca Aprobar / Cambiar red)");
+    const current = await withTimeout(req("eth_chainId"), 10000, 2).catch(() => null);
+    if (current !== BASE.chainId) {
+      try {
+        await withTimeout(req("wallet_switchEthereumChain", [{ chainId: BASE.chainId }]), 45000, 2);
+      } catch (e) {
+        const code = e && (e.code || (e.data && e.data.originalError && e.data.originalError.code));
+        if (code === 4902) await withTimeout(req("wallet_addEthereumChain", [BASE]), 60000, 2);
+        else throw e;
+      }
     }
-    const ok = await eth.request({ method: "wallet_watchAsset", params: { type: "ERC20",
-      options: { address: TOKEN, symbol: "EZE", decimals: 18, image: new URL("logo.png", location.href).href } } });
+
+    say("Paso 3 de 3: agregando EZE… (toca Agregar token)");
+    const ok = await withTimeout(req("wallet_watchAsset", { type: "ERC20",
+      options: { address: TOKEN, symbol: "EZE", decimals: 18, image: new URL("logo.png", location.href).href } }), 60000, 3);
     say(ok === false ? "No se agregó. Puedes intentarlo de nuevo." : "✅ ¡Listo! EZE ya aparece en tu MetaMask (red Base).", ok === false ? "err" : "ok");
   } catch (e) {
-    say(e.code === 4001 ? "Cancelaste en MetaMask. Puedes intentarlo de nuevo." : "Error: " + (e.message || e), "err");
+    if (e && e.timeout) {
+      const tips = {
+        1: "MetaMask no respondió al conectar. Abre la app MetaMask, revisa si hay una solicitud pendiente y vuelve a tocar el botón.",
+        2: "MetaMask no cambió a la red Base. En MetaMask selecciona la red Base a mano y vuelve a tocar el botón.",
+        3: "MetaMask no mostró la ventana para agregar EZE. Usa la opción manual de abajo.",
+      };
+      say("⏳ " + tips[e.step], "err");
+    } else if (e && e.code === 4001) {
+      say("Cancelaste en MetaMask. Puedes intentarlo de nuevo.", "err");
+    } else if (e && e.code === -32002) {
+      say("Ya hay una solicitud esperando en MetaMask. Abre la app MetaMask, apruébala o recházala, y vuelve a intentar.", "err");
+    } else {
+      say("Error: " + ((e && e.message) || e) + ". Usa la opción manual de abajo.", "err");
+    }
+    $("manual").open = true;
   } finally { b.disabled = false; }
 };
 
