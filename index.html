@@ -7,8 +7,8 @@
 <meta name="description" content="Agrega el token Ezequiel (EZE) a tu MetaMask en un clic. Red Base.">
 <meta property="og:title" content="Ezequiel (EZE)">
 <meta property="og:description" content="Agrega EZE a tu MetaMask en un clic.">
-<meta property="og:image" content="/logo.png">
-<link rel="icon" href="/logo.png">
+<meta property="og:image" content="https://hurmaralfred.github.io/ezequiel-token/logo.png">
+<link rel="icon" href="logo.png">
 <style>
   :root{--bg:#fff8f2;--card:#ffffff;--text:#1d1a17;--muted:#6b625a;--line:#f0e2d5;--accent:#ff6a3d;--accent2:#ffb547;--ok:#1a8f4c}
   @media (prefers-color-scheme:dark){:root{--bg:#141110;--card:#1f1a17;--text:#f6eee8;--muted:#b3a79d;--line:#332a24;--ok:#4cd187}}
@@ -37,7 +37,7 @@
 <body>
 <main>
   <div class="card">
-    <img class="logo" src="/logo.png" alt="Logo EZE">
+    <img class="logo" src="logo.png" alt="Logo EZE">
     <h1>Ezequiel</h1>
     <p class="sub">EZE · Red Base</p>
 
@@ -95,7 +95,7 @@ $("add").onclick = async () => {
       } else throw e;
     }
     const ok = await eth.request({ method: "wallet_watchAsset", params: { type: "ERC20",
-      options: { address: TOKEN, symbol: "EZE", decimals: 18, image: location.origin + "/logo.png" } } });
+      options: { address: TOKEN, symbol: "EZE", decimals: 18, image: new URL("logo.png", location.href).href } } });
     say(ok === false ? "No se agregó. Puedes intentarlo de nuevo." : "✅ ¡Listo! EZE ya aparece en tu MetaMask (red Base).", ok === false ? "err" : "ok");
   } catch (e) {
     say(e.code === 4001 ? "Cancelaste en MetaMask. Puedes intentarlo de nuevo." : "Error: " + (e.message || e), "err");
