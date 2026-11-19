@@ -72,7 +72,7 @@
       <div class="row"><span>Código verificado</span><a id="explorer" target="_blank" rel="noopener">Ver en Blockscout ↗</a></div>
     </div>
   </div>
-  <footer>Nunca compartas tus 12 palabras secretas con nadie. Esta página nunca te las pedirá.</footer>
+  <footer>Nunca compartas tus 12 palabras secretas con nadie. Esta página nunca te las pedirá. · v3</footer>
 </main>
 <script>
 const TOKEN = "0xb09B8Ea5fcF1276f5bF43244d47b8EBbbac45990";
@@ -84,8 +84,19 @@ $("explorer").href = "https://base.blockscout.com/token/" + TOKEN;
 
 function say(t, cls) { const m = $("msg"); m.textContent = t; m.className = cls || ""; }
 
-const eth = window.ethereum;
-if (!eth) {
+// Si hay varias wallets instaladas, window.ethereum puede ser de otra (Phantom, Coinbase…).
+// EIP-6963: pedimos a cada wallet que se anuncie y elegimos MetaMask.
+let eth = window.ethereum;
+let walletName = "";
+const found = [];
+window.addEventListener("eip6963:announceProvider", (ev) => {
+  found.push(ev.detail);
+  const mm = found.find((d) => d.info && d.info.rdns === "io.metamask");
+  if (mm) { eth = mm.provider; walletName = "MetaMask"; }
+  else if (!walletName && found[0]) { eth = found[0].provider; walletName = found[0].info.name; }
+});
+window.dispatchEvent(new Event("eip6963:requestProvider"));
+if (!eth && !found.length) {
   // Navegador normal (sin MetaMask): abrir esta página dentro de la app MetaMask
   $("add").style.display = "none";
   const o = $("open");
@@ -103,7 +114,8 @@ const req = (method, params) => eth.request(params === undefined ? { method } : 
 $("add").onclick = async () => {
   const b = $("add"); b.disabled = true;
   try {
-    say("Paso 1 de 3: conectando con MetaMask… (si aparece una ventana, toca Conectar)");
+    if (!eth) throw new Error("No se encontró MetaMask en este navegador");
+    say("Paso 1 de 3: conectando con " + (walletName || "tu wallet") + "… (si aparece una ventana, toca Conectar)");
     let accts = await withTimeout(req("eth_accounts"), 10000, 1).catch(() => []);
     if (!accts || !accts.length) await withTimeout(req("eth_requestAccounts"), 60000, 1);
 
